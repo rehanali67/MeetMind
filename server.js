@@ -45,9 +45,27 @@ class MeetingAssistantServer {
         processingQueue: []
       });
 
-      ws.on('message', async (data) => {
-        await this.handleAudioData(clientId, data);
-      });
+  ws.on('message', async (data) => {
+    // If data is a Buffer, treat as audio. If string, check for text-question.
+    if (Buffer.isBuffer(data)) {
+      await this.handleAudioData(clientId, data);
+    } else {
+      try {
+        let msg;
+        try {
+          msg = JSON.parse(data);
+        } catch (e) {
+          msg = {};
+        }
+        if (msg.type === 'text-question' && typeof msg.question === 'string') {
+          const answer = await this.processTextQuestion(msg.question);
+          ws.send(JSON.stringify({ type: 'answer', answer, timestamp: Date.now() }));
+        }
+      } catch (err) {
+        console.error('Error handling text question:', err);
+      }
+    }
+  });
 
       ws.on('close', () => {
         console.log(`Client disconnected: ${clientId}`);
