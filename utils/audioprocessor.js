@@ -5,19 +5,101 @@ class AudioProcessor {
       this.bufferSize = 4096;
     }
   
-    // Convert WebM audio buffer to PCM format
-    processAudioBuffer(buffer) {
+    // Process audio buffer for speech-to-text
+    async processAudioBuffer(buffer) {
       try {
-        // Basic audio processing
-        // In a production environment, you might want to use FFmpeg or similar
-        // to properly decode WebM audio
+        // Normalize audio first
+        const normalizedBuffer = this.normalizeAudio(buffer);
         
-        // For now, we'll pass the buffer as-is since Gemini can handle WebM
-        return buffer;
+        // Check if audio contains speech (not silence)
+        if (this.detectSilence(normalizedBuffer)) {
+          return null; // Skip silent audio
+        }
+        
+        // Convert to base64 for API transmission
+        const base64Audio = normalizedBuffer.toString('base64');
+        
+        return {
+          audioData: base64Audio,
+          format: 'webm',
+          sampleRate: this.sampleRate,
+          duration: this.calculateDuration(normalizedBuffer)
+        };
       } catch (error) {
         console.error('Error processing audio buffer:', error);
         return null;
       }
+    }
+
+    // Transcribe audio using speech-to-text
+    async transcribeAudio(audioData) {
+      try {
+        // This would integrate with Google Speech-to-Text, OpenAI Whisper, or similar
+        // For now, we'll simulate the transcription process
+        
+        const transcriptionResult = await this.callSpeechToTextAPI(audioData);
+        return transcriptionResult;
+      } catch (error) {
+        console.error('Error transcribing audio:', error);
+        return null;
+      }
+    }
+
+    // Generate intelligent response based on transcribed text
+    async generateResponse(transcribedText, context = {}) {
+      try {
+        const prompt = this.buildResponsePrompt(transcribedText, context);
+        
+        // Call AI service (OpenAI, Gemini, etc.)
+        const response = await this.callAIService(prompt);
+        
+        return {
+          originalText: transcribedText,
+          suggestedResponse: response,
+          timestamp: new Date().toISOString(),
+          confidence: 0.85 // Placeholder confidence score
+        };
+      } catch (error) {
+        console.error('Error generating response:', error);
+        return null;
+      }
+    }
+
+    // Build prompt for AI response generation
+    buildResponsePrompt(transcribedText, context) {
+      return `
+        You are an intelligent meeting assistant. Someone just said: "${transcribedText}"
+        
+        Context: ${context.meetingType || 'General meeting'}
+        Previous conversation: ${context.previousMessages || 'None'}
+        
+        Provide a helpful, professional response or suggestion. Keep it concise and relevant.
+        If it's a question, provide a thoughtful answer. If it's a statement, provide relevant follow-up or acknowledgment.
+        
+        Response:
+      `.trim();
+    }
+
+    // Placeholder for speech-to-text API call
+    async callSpeechToTextAPI(audioData) {
+      // This would integrate with actual speech-to-text service
+      // For example: Google Cloud Speech-to-Text, OpenAI Whisper, etc.
+      
+      // Simulated response for now
+      return {
+        text: "Transcribed speech will appear here",
+        confidence: 0.9,
+        language: "en-US"
+      };
+    }
+
+    // Placeholder for AI service call
+    async callAIService(prompt) {
+      // This would integrate with OpenAI GPT, Google Gemini, etc.
+      // For example: OpenAI API, Google Gemini API
+      
+      // Simulated response for now
+      return "This is where the AI-generated response would appear based on the transcribed speech.";
     }
   
     // Detect silence in audio buffer
