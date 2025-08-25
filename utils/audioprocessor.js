@@ -1,11 +1,21 @@
 // Audio processing utilities
+const fs = require('fs');
+const path = require('path');
+const { Readable } = require('stream');
+
 class AudioProcessor {
     constructor() {
       this.sampleRate = 16000; // Target sample rate for speech recognition
       this.bufferSize = 4096;
+      this.tempDir = path.join(__dirname, '../temp');
+      
+      // Create temp directory if it doesn't exist
+      if (!fs.existsSync(this.tempDir)) {
+        fs.mkdirSync(this.tempDir, { recursive: true });
+      }
     }
   
-    // Process audio buffer for speech-to-text
+   
     async processAudioBuffer(buffer) {
       try {
         // Normalize audio first
@@ -80,26 +90,55 @@ class AudioProcessor {
       `.trim();
     }
 
-    // Placeholder for speech-to-text API call
+    // Use Gemini for speech-to-text (completely free)
     async callSpeechToTextAPI(audioData) {
-      // This would integrate with actual speech-to-text service
-      // For example: Google Cloud Speech-to-Text, OpenAI Whisper, etc.
-      
-      // Simulated response for now
-      return {
-        text: "Transcribed speech will appear here",
-        confidence: 0.9,
-        language: "en-US"
-      };
+      try {
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              mimeType: "audio/webm",
+              data: audioData.audioData
+            }
+          },
+          "Convert this audio to text. Only return the transcribed text, nothing else. If no clear speech is detected, return 'SILENCE'."
+        ]);
+
+        const response = await result.response;
+        const text = response.text().trim();
+        
+        if (text === 'SILENCE' || text.length < 3) {
+          return null;
+        }
+
+        return {
+          text: text,
+          confidence: 0.9,
+          language: "en-US"
+        };
+      } catch (error) {
+        console.error('Speech-to-text error:', error);
+        return null;
+      }
     }
 
-    // Placeholder for AI service call
+    // Use Gemini for response generation
     async callAIService(prompt) {
-      // This would integrate with OpenAI GPT, Google Gemini, etc.
-      // For example: OpenAI API, Google Gemini API
-      
-      // Simulated response for now
-      return "This is where the AI-generated response would appear based on the transcribed speech.";
+      try {
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text().trim();
+      } catch (error) {
+        console.error('AI service error:', error);
+        return "Sorry, I couldn't generate a response right now.";
+      }
     }
   
     // Detect silence in audio buffer

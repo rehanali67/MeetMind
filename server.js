@@ -135,19 +135,27 @@ class MeetingAssistantServer {
   // Enhanced audio processing pipeline
   async processAudioPipeline(audioBuffer) {
     try {
+      console.log(`Processing audio buffer of size: ${audioBuffer.length} bytes`);
+      
       // Step 1: Process audio buffer (normalize, detect silence)
       const processedAudio = await this.audioProcessor.processAudioBuffer(audioBuffer);
       
       if (!processedAudio) {
+        console.log('Audio processing returned null (likely silence)');
         return 'no-answer'; // Silent audio or processing failed
       }
+
+      console.log('Audio processed successfully, attempting transcription...');
 
       // Step 2: Transcribe audio to text
       const transcription = await this.audioProcessor.transcribeAudio(processedAudio);
       
       if (!transcription || !transcription.text) {
+        console.log('Transcription failed or returned no text');
         return 'no-answer'; // No speech detected
       }
+
+      console.log(`Transcribed: "${transcription.text}"`);
 
       // Step 3: Generate intelligent response
       const response = await this.audioProcessor.generateResponse(transcription.text, {
@@ -156,15 +164,16 @@ class MeetingAssistantServer {
       });
 
       if (response && response.suggestedResponse) {
-        console.log(`Transcribed: "${transcription.text}"`);
-        console.log(`Response: "${response.suggestedResponse}"`);
+        console.log(`Generated response: "${response.suggestedResponse}"`);
         return response.suggestedResponse;
       }
 
+      console.log('Response generation failed');
       return 'no-answer';
     } catch (error) {
       console.error('Error in audio processing pipeline:', error);
-      
+      // Fallback to original Gemini processing
+      console.log('Falling back to original Gemini processing...');
       return await this.processAudioWithGemini(audioBuffer);
     }
   }
